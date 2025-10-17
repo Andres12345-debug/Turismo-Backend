@@ -1,0 +1,241 @@
+###### Creamos el proyecto ######
+
+  nest new citas_backend
+	nest new back_repositorio
+    
+
+###### installacion de paquetes #######
+    npm i sharp 
+    npm i expres 
+    npm i typeorm
+    npm i @nestjs/config
+    npm i @nestjs/typeorm 
+    npm i typeorm-naming-strategies 
+    npm install bcryptjs
+    npm i formidable
+    npm install jsonwebtoken
+    npm install pg --save
+    npm i @types/express --save-dev
+    npm i @types/bcryptjs --save-dev
+    npm i @types/formidable --save-dev
+    npm i @types/jsonwebtoken --save-dev
+
+### privados  ######
+
+    nest g mo modulos/privado
+    nest g mo modulos/privado/usuarios
+    nest g s modulos/privado/usuarios --no-spec
+    nest g co modulos/privado/usuarios --no-spec
+
+    nest g mo modulos/privado/roles
+    nest g s modulos/privado/roles --no-spec
+    nest g co modulos/privado/roles --no-spec
+
+    nest g mo modulos/privado/materias
+    nest g s modulos/privado/materias --no-spec
+    nest g co modulos/privado/materias --no-spec
+
+    nest g mo modulos/privado/documentos
+    nest g s modulos/privado/documentos --no-spec
+    nest g co modulos/privado/documentos --no-spec
+
+    nest g mo modulos/privado/comentariosCalificaciones
+    nest g s modulos/privado/comentariosCalificaciones --no-spec
+    nest g co modulos/privado/comentariosCalificaciones --no-spec
+
+    nest g mo modulos/privado/notificaciones
+    nest g s modulos/privado/notificaciones --no-spec
+    nest g co modulos/privado/notificaciones --no-spec
+
+
+    nest g mo modulos/privado/publicaciones
+    nest g s modulos/privado/publicaciones --no-spec
+    nest g co modulos/privado/publicaciones --no-spec
+
+    nest g mo modulos/privado/facultad
+    nest g s modulos/privado/facultad --no-spec
+    nest g co modulos/privado/facultad --no-spec
+
+    nest g mo modulos/privado/carrera
+    nest g s modulos/privado/carrera --no-spec
+    nest g co modulos/privado/carrera --no-spec
+
+    
+    nest g mo modulos/privado/imagenes
+    nest g s modulos/privado/imagenes --no-spec
+    nest g co modulos/privado/imagenes --no-spec
+
+    nest g mo modulos/privado/usuarioMateria
+    nest g s modulos/privado/usuarioMateria --no-spec
+    nest g co modulos/privado/usuarioMateria --no-spec
+
+publico
+
+    nest g mo modulos/publico
+
+
+    nest g mo modulos/publico/accesos
+    nest g s modulos/publico/accesos --no-spec
+    nest g co modulos/publico/accesos --no-spec
+
+    nest g mo modulos/publico/registros
+    nest g s modulos/publico/registros --no-spec
+    nest g co modulos/publico/registros --no-spec
+
+
+#configuracion del App.Module
+      imports: [ConfigModule.forRoot({isGlobal: true,envFilePath:".env"}), ConexionModule, PublicoModule, PrivadoModule],
+
+
+#### Creamos config/conexión ### 
+
+nest g module config/conexion
+            
+        @Global()
+        @Module({
+        imports: [],
+        providers: [
+            {
+            provide: DataSource,
+            inject: [],
+            useFactory: async () => {
+                try {
+                const poolConexion = new DataSource({
+                    type: 'postgres',
+                    host: String(process.env.HOST),
+                    port: Number(process.env.PORT),
+                    username: String(process.env.USER),
+                    password: String(process.env.CLAVE),
+                    database: String(process.env.BASE_DATOS),
+                    synchronize: true,
+                    logging: true,
+                    namingStrategy: new SnakeNamingStrategy(),
+                    entities: [Acceso, Publicacion, Rol, Usuario], // Aquí debes agregar tus entidades
+                });
+
+                await poolConexion.initialize();
+                console.log("Conexión a la base de datos exitosa."+String(process.env.DATA_BASE));
+
+                return poolConexion;
+                } catch (miError) {
+                console.log("Falló al realizar la conexión");
+                throw miError;
+                }
+            },
+            },
+        ],
+        exports: [DataSource],
+        })
+        export class 
+        ConexionModule {}
+
+
+###### CREACION DE LOS MODELOS #######
+   	nest g cl modelos/usuario --no-spec
+  	nest g cl modelos/rol --no-spec
+   	nest g cl modelos/acceso --no-spec
+	  nest g cl modelos/comentariosCalificacion --no-spec
+	  nest g cl modelos/documento --no-spec
+	  nest g cl modelos/materia --no-spec
+	  nest g cl modelos/notificacion --no-spec
+	  nest g cl modelos/facultad --no-spec
+	  nest g cl modelos/carrera --no-spec
+
+
+    nest g cl modelos/publicacion --no-spec
+
+#### Middleware #####
+    nest g cl middleware/seguridad/seguridad --no-spec
+
+   Se agrega al seguridad que se crea esto
+
+              import { Injectable, NestMiddleware } from '@nestjs/common';
+              import { verify } from 'jsonwebtoken';
+              import { NextFunction ,Request, Response} from 'express';
+
+              @Injectable()
+              export class Seguridad implements NestMiddleware {
+                  public use(req: Request, res: Response, next: NextFunction){
+                  if(!req.headers.authorization){
+                  res.status(401).json({respuesta:"Peticion negada por el sistema de seguridad"});
+              }else{
+                  try {
+                      const token = req.headers.authorization;
+                      const datosSesion = verify(token, 'laClaveSecreta');
+                      if (req.method!='PUT'){
+                          req.body.datosUsuario = datosSesion;
+                      }
+                      next();
+                  } catch (miError) {
+                      res.status(500).json({mensaje:"Intento de fraude"});
+
+                  }
+              }
+              }}
+
+    Se configura tambien el app.module 
+        
+    export class AppModule implements NestModule{
+      public configure(consumer: MiddlewareConsumer) {
+
+      consumer.apply(Seguridad).forRoutes({path: '/privado/*', method: RequestMethod.ALL});
+      
+        }
+      }
+
+### Arreglamos el Main.ts ###
+        
+	async function bootstrap() {
+        const puerto=Number(process.env.PUERTO_SERVIDOR);
+
+        const app = await NestFactory.create(AppModule);
+        app.enableCors();
+        await app.listen(puerto,()=>{
+            console.log(`Servidor funcionando puerto: `+puerto);
+        });
+        }
+        bootstrap();
+
+
+## Al empezar para las rutas del privado y publico ##
+Para el routes 
+const routes: Routes = [
+    {
+      path: 'privado',
+      children: [UsuariosModule, PublicoModule, RolesModule, PublicacionesModule, ImagenesModule],
+    },
+  ];
+
+  Publico
+const routes: Routes = [
+    {
+      path: 'publico',
+      children: [UsuariosModule, PublicoModule, RolesModule, PublicacionesModule, ImagenesModule],
+    },
+  ];
+
+  @Module({
+  imports: [
+    UsuariosModule, 
+    CarreraModule,
+    FacultadModule,
+    // Registrar las rutas del módulo privado
+    RouterModule.register(routes),
+    RolesModule,
+  ],
+  exports: [RouterModule],
+  })
+
+REGISTER va si o si, tanto para privado como publico
+@Module({
+  imports: [
+    UsuariosModule, 
+    MateriasModule,
+    RouterModule.register(routes),
+
+  ],
+  exports: [RouterModule],
+})
+
+Ejecutar proyecto
+nest start --watch

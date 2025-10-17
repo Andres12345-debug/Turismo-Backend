@@ -1,0 +1,23 @@
+services:
+  backend:
+    build: .
+    container_name: bd_arriendos-backend
+    ports:
+      - "3550:3000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  db:
+    image: postgres:15
+    container_name: turismo_backend-db
+    environment:
+      - POSTGRES_USER=andres
+      - POSTGRES_PASSWORD=andres527
+      - POSTGRES_DB=bd_turismo    # ✅ debe coincidir con .env
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:
