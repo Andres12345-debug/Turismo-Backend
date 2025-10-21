@@ -1,7 +1,7 @@
 services:
   backend:
     build: .
-    container_name: bd_arriendos-backend
+    container_name: bd_turismo-backend
     ports:
       - "3550:3000"
     env_file:
@@ -12,7 +12,7 @@ services:
 
   db:
     image: postgres:15
-    container_name: turismo_backend-db
+    container_name: turismo_db
     environment:
       - POSTGRES_USER=andres
       - POSTGRES_PASSWORD=andres527
